@@ -63,6 +63,13 @@ export const memberService = {
 
   async createMember(formData: MemberFormData): Promise<ServiceResponse<Member>> {
     await simulateDelay(500);
+
+    // Duplicate check
+    const existing = members.find((m) => m.memberNumber.toLowerCase() === formData.memberNumber.toLowerCase());
+    if (existing) {
+      return { success: false, data: null as unknown as Member, message: `Member number '${formData.memberNumber}' already exists.` };
+    }
+
     const branch = branchesData.find((b) => b.id === formData.branchId);
     const now = new Date().toISOString().split('T')[0];
     const newMember: Member = {
@@ -70,7 +77,7 @@ export const memberService = {
       ...formData,
       lastName: formData.lastName || '',
       fatherHusbandName: formData.fatherHusbandName || '',
-      kycStatus: 'Pending',
+      kycStatus: formData.aadhaarLast4 || formData.pan ? 'Verified' : 'Pending',
       branchName: branch?.name || '',
       status: 'Active',
       createdAt: now,

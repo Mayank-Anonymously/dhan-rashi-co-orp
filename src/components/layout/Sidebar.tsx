@@ -16,18 +16,24 @@ interface NavItem {
   isFuture?: boolean;
 }
 
-const activeNavItems: NavItem[] = [
+const mainNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: 'bi-speedometer2' },
   { label: 'Society', href: '/society', icon: 'bi-building' },
   { label: 'Branches', href: '/branches', icon: 'bi-diagram-3' },
   { label: 'Users & Roles', href: '/users', icon: 'bi-people' },
   { label: 'Members', href: '/members', icon: 'bi-person-vcard' },
+];
+
+const phase2NavItems: NavItem[] = [
+  { label: 'Share Accounts', href: '/shares', icon: 'bi-pie-chart' },
+  { label: 'Loan Accounts', href: '/loans', icon: 'bi-bank' },
+  { label: 'Loan Applications', href: '/loans/applications', icon: 'bi-file-earmark-text' },
+  { label: 'Loan Products', href: '/loans/products', icon: 'bi-box-seam' },
+  { label: 'Interest Rates', href: '/loans/rates', icon: 'bi-percent' },
   { label: 'Settings', href: '/settings', icon: 'bi-gear' },
 ];
 
 const futureNavItems: NavItem[] = [
-  { label: 'Shares', href: '#', icon: 'bi-pie-chart', isFuture: true },
-  { label: 'Loans', href: '#', icon: 'bi-bank', isFuture: true },
   { label: 'Deposits', href: '#', icon: 'bi-piggy-bank', isFuture: true },
   { label: 'Collections', href: '#', icon: 'bi-wallet2', isFuture: true },
   { label: 'ECS', href: '#', icon: 'bi-credit-card-2-front', isFuture: true },
@@ -43,6 +49,7 @@ export default function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
 
   const isItemActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard';
+    if (href === '/loans') return pathname === '/loans';
     return pathname.startsWith(href);
   };
 
@@ -61,14 +68,30 @@ export default function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
           </div>
           <div className="sidebar-brand-text">
             <div>DHAN RASHI</div>
-            <small>Co-operative Society ERP</small>
+            <small>Co-operative ERP (Phase 2)</small>
           </div>
         </div>
 
         {/* Navigation */}
         <nav className="sidebar-nav">
-          <div className="sidebar-nav-label">Main Modules</div>
-          {activeNavItems.map((item) => {
+          <div className="sidebar-nav-label">Core Modules</div>
+          {mainNavItems.map((item) => {
+            const active = isItemActive(item.href);
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`sidebar-nav-item ${active ? 'active' : ''}`}
+                onClick={onCloseMobile}
+              >
+                <i className={`bi ${item.icon}`}></i>
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+
+          <div className="sidebar-nav-label">Phase 2 Modules</div>
+          {phase2NavItems.map((item) => {
             const active = isItemActive(item.href);
             return (
               <Link

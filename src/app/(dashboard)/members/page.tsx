@@ -272,7 +272,7 @@ export default function MembersPage() {
               {/* Pagination Footer */}
               <div className="d-flex flex-wrap align-items-center justify-content-between p-3 border-top gap-2">
                 <div className="small text-muted">
-                  Showing {(page - 1) * pageSize + 1} to Math.min({page * pageSize}, {total}) of {total} members
+                  Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total} members
                 </div>
 
                 {totalPages > 1 && (

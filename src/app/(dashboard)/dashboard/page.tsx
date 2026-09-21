@@ -21,6 +21,9 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
+import { shareService } from '@/services/shareService';
+import { loanService } from '@/services/loanService';
+
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<{
@@ -33,14 +36,21 @@ export default function DashboardPage() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [activeUsersCount, setActiveUsersCount] = useState(0);
 
+  // Phase 2 Financial KPIs
+  const [shareStats, setShareStats] = useState({ totalAccounts: 0, totalCapital: 0 });
+  const [loanStats, setLoanStats] = useState({ activeLoans: 0, totalDisbursed: 0, outstanding: 0, pendingApps: 0 });
+
   useEffect(() => {
     async function loadDashboard() {
       setLoading(true);
       try {
-        const [dashRes, branchRes, userRes] = await Promise.all([
+        const [dashRes, branchRes, userRes, shareRes, loanAccRes, loanAppRes] = await Promise.all([
           memberService.getDashboardStats(),
           branchService.getBranches(),
           userService.getUsers(),
+          shareService.getShareAccounts(),
+          loanService.getLoanAccounts(),
+          loanService.getLoanApplications(),
         ]);
 
         if (dashRes.success) setStats(dashRes.data);
@@ -48,6 +58,19 @@ export default function DashboardPage() {
         if (userRes.success) {
           const active = userRes.data.filter((u) => u.status === 'Active').length;
           setActiveUsersCount(active);
+        }
+
+        if (shareRes.success) {
+          const cap = shareRes.data.reduce((acc, s) => acc + s.totalValue, 0);
+          setShareStats({ totalAccounts: shareRes.data.length, totalCapital: cap });
+        }
+
+        if (loanAccRes.success && loanAppRes.success) {
+          const activeLoans = loanAccRes.data.filter((l) => l.status === 'ACTIVE').length;
+          const disbursed = loanAccRes.data.reduce((acc, l) => acc + l.principalAmount, 0);
+          const outstanding = loanAccRes.data.reduce((acc, l) => acc + l.outstandingPrincipal, 0);
+          const pending = loanAppRes.data.filter((a) => a.status === 'SUBMITTED').length;
+          setLoanStats({ activeLoans, totalDisbursed: disbursed, outstanding, pendingApps: pending });
         }
       } catch (err) {
         console.error('Error loading dashboard:', err);
@@ -154,6 +177,73 @@ export default function DashboardPage() {
             <div className="stat-card-value">{stats.newThisMonth}</div>
             <div className="small text-muted mt-2">
               <i className="bi bi-calendar-event me-1"></i> Current month
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Phase 2 Financial & Operational KPI Row */}
+      <div className="row g-3 mb-4">
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card shadow-sm border-0 border-start border-4 border-primary">
+            <div className="card-body p-3">
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <span className="text-muted small fw-bold">TOTAL SHARE CAPITAL</span>
+                <i className="bi bi-pie-chart text-primary"></i>
+              </div>
+              <div className="fs-4 fw-bold text-dark">₹{shareStats.totalCapital.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+              <div className="d-flex justify-content-between align-items-center mt-2">
+                <small className="text-muted">{shareStats.totalAccounts} Share Accounts</small>
+                <Link href="/shares" className="btn btn-link btn-sm p-0 text-decoration-none small">Manage <i className="bi bi-arrow-right"></i></Link>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card shadow-sm border-0 border-start border-4 border-success">
+            <div className="card-body p-3">
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <span className="text-muted small fw-bold">DISBURSED LOANS</span>
+                <i className="bi bi-cash-stack text-success"></i>
+              </div>
+              <div className="fs-4 fw-bold text-dark">₹{loanStats.totalDisbursed.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+              <div className="d-flex justify-content-between align-items-center mt-2">
+                <small className="text-success fw-semibold">{loanStats.activeLoans} Active Loans</small>
+                <Link href="/loans" className="btn btn-link btn-sm p-0 text-decoration-none small">Directory <i className="bi bi-arrow-right"></i></Link>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card shadow-sm border-0 border-start border-4 border-warning">
+            <div className="card-body p-3">
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <span className="text-muted small fw-bold">OUTSTANDING PRINCIPAL</span>
+                <i className="bi bi-wallet2 text-warning"></i>
+              </div>
+              <div className="fs-4 fw-bold text-dark">₹{loanStats.outstanding.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+              <div className="d-flex justify-content-between align-items-center mt-2">
+                <small className="text-muted">Portfolio balance</small>
+                <Link href="/loans" className="btn btn-link btn-sm p-0 text-decoration-none small">View Accounts <i className="bi bi-arrow-right"></i></Link>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card shadow-sm border-0 border-start border-4 border-danger">
+            <div className="card-body p-3">
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <span className="text-muted small fw-bold">PENDING APPLICATIONS</span>
+                <i className="bi bi-file-earmark-clock text-danger"></i>
+              </div>
+              <div className="fs-4 fw-bold text-dark">{loanStats.pendingApps} Request(s)</div>
+              <div className="d-flex justify-content-between align-items-center mt-2">
+                <small className="text-danger fw-semibold">Awaiting Approval</small>
+                <Link href="/loans/applications" className="btn btn-link btn-sm p-0 text-decoration-none small">Approve <i className="bi bi-arrow-right"></i></Link>
+              </div>
             </div>
           </div>
         </div>
