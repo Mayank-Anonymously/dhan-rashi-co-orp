@@ -24,24 +24,34 @@ const mainNavItems: NavItem[] = [
   { label: 'Members', href: '/members', icon: 'bi-person-vcard' },
 ];
 
-const phase2NavItems: NavItem[] = [
+const sharesLoansNavItems: NavItem[] = [
   { label: 'Share Accounts', href: '/shares', icon: 'bi-pie-chart' },
   { label: 'Loan Accounts', href: '/loans', icon: 'bi-bank' },
   { label: 'Loan Applications', href: '/loans/applications', icon: 'bi-file-earmark-text' },
   { label: 'Loan Products', href: '/loans/products', icon: 'bi-box-seam' },
   { label: 'Interest Rates', href: '/loans/rates', icon: 'bi-percent' },
+];
+
+const accountingNavItems: NavItem[] = [
+  { label: 'Chart of Accounts', href: '/accounting/chart-of-accounts', icon: 'bi-folder2-open' },
+  { label: 'General Ledger', href: '/accounting/ledger', icon: 'bi-journal-text' },
+  { label: 'Trial Balance', href: '/accounting/trial-balance', icon: 'bi-calculator' },
+  { label: 'Balance Sheet', href: '/accounting/balance-sheet', icon: 'bi-file-earmark-spreadsheet' },
+];
+
+const bankingNavItems: NavItem[] = [
+  { label: 'Cash & Bank Accounts', href: '/banking/accounts', icon: 'bi-bank2' },
+  { label: 'Import Statement CSV', href: '/banking/import', icon: 'bi-cloud-arrow-up' },
+  { label: 'Bank Reconciliation', href: '/banking/reconciliation', icon: 'bi-arrow-repeat' },
+  { label: 'Audit Trail Logs', href: '/audit', icon: 'bi-clock-history' },
   { label: 'Settings', href: '/settings', icon: 'bi-gear' },
 ];
 
 const futureNavItems: NavItem[] = [
-  { label: 'Deposits', href: '#', icon: 'bi-piggy-bank', isFuture: true },
+  { label: 'Deposits (FD/RD)', href: '#', icon: 'bi-piggy-bank', isFuture: true },
   { label: 'Collections', href: '#', icon: 'bi-wallet2', isFuture: true },
-  { label: 'ECS', href: '#', icon: 'bi-credit-card-2-front', isFuture: true },
-  { label: 'Accounting', href: '#', icon: 'bi-journal-bookmark', isFuture: true },
-  { label: 'Demand Register', href: '#', icon: 'bi-card-checklist', isFuture: true },
-  { label: 'Recovery', href: '#', icon: 'bi-arrow-counterclockwise', isFuture: true },
-  { label: 'Reports', href: '#', icon: 'bi-file-earmark-bar-graph', isFuture: true },
-  { label: 'Communication', href: '#', icon: 'bi-chat-left-text', isFuture: true },
+  { label: 'ECS Processing', href: '#', icon: 'bi-credit-card-2-front', isFuture: true },
+  { label: 'Recovery Workflow', href: '#', icon: 'bi-arrow-counterclockwise', isFuture: true },
 ];
 
 export default function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
@@ -68,13 +78,13 @@ export default function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
           </div>
           <div className="sidebar-brand-text">
             <div>DHAN RASHI</div>
-            <small>Co-operative ERP (Phase 2)</small>
+            <small>Co-operative ERP (Phase 1+2)</small>
           </div>
         </div>
 
         {/* Navigation */}
         <nav className="sidebar-nav">
-          <div className="sidebar-nav-label">Core Modules</div>
+          <div className="sidebar-nav-label">Core Operations</div>
           {mainNavItems.map((item) => {
             const active = isItemActive(item.href);
             return (
@@ -90,8 +100,8 @@ export default function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
             );
           })}
 
-          <div className="sidebar-nav-label">Phase 2 Modules</div>
-          {phase2NavItems.map((item) => {
+          <div className="sidebar-nav-label">Shares & Loans</div>
+          {sharesLoansNavItems.map((item) => {
             const active = isItemActive(item.href);
             return (
               <Link
@@ -106,7 +116,39 @@ export default function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
             );
           })}
 
-          <div className="sidebar-nav-label">Future Modules</div>
+          <div className="sidebar-nav-label">Accounting & Ledger</div>
+          {accountingNavItems.map((item) => {
+            const active = isItemActive(item.href);
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`sidebar-nav-item ${active ? 'active' : ''}`}
+                onClick={onCloseMobile}
+              >
+                <i className={`bi ${item.icon}`}></i>
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+
+          <div className="sidebar-nav-label">Banking & Reconciliation</div>
+          {bankingNavItems.map((item) => {
+            const active = isItemActive(item.href);
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`sidebar-nav-item ${active ? 'active' : ''}`}
+                onClick={onCloseMobile}
+              >
+                <i className={`bi ${item.icon}`}></i>
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+
+          <div className="sidebar-nav-label">Phase 3 Roadmap</div>
           {futureNavItems.map((item) => (
             <div
               key={item.label}
