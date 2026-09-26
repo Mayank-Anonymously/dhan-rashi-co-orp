@@ -9,8 +9,10 @@ import { memberService } from '@/services/memberService';
 import { branchService } from '@/services/branchService';
 import { shareService } from '@/services/shareService';
 import { loanService } from '@/services/loanService';
+import { depositService } from '@/services/depositService';
 import { Member, MemberFormData, MemberHistory } from '@/types/member';
 import { Branch } from '@/types/branch';
+import { DepositAccount } from '@/types/deposit';
 import { formatDate, getMemberFullName, getInitials } from '@/utils/helpers';
 import { validateMemberForm, ValidationError } from '@/utils/validators';
 
@@ -24,7 +26,7 @@ export default function MemberProfilePage({
   const [branches, setBranches] = useState<Branch[]>([]);
   const [history, setHistory] = useState<MemberHistory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'shares' | 'loans' | 'personal' | 'kyc' | 'addresses' | 'nominee' | 'history'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'shares' | 'loans' | 'deposits' | 'personal' | 'kyc' | 'addresses' | 'nominee' | 'history'>('overview');
 
   // Edit Modal state
   const [showEditModal, setShowEditModal] = useState(false);
@@ -35,32 +37,36 @@ export default function MemberProfilePage({
 
   const [shareAccounts, setShareAccounts] = useState<any[]>([]);
   const [loanAccounts, setLoanAccounts] = useState<any[]>([]);
+  const [depositAccounts, setDepositAccounts] = useState<DepositAccount[]>([]);
 
   const refreshData = React.useCallback(async () => {
-    const [memRes, histRes, branchRes, shareRes, loanRes] = await Promise.all([
+    const [memRes, histRes, branchRes, shareRes, loanRes, depRes] = await Promise.all([
       memberService.getMember(memberId),
       memberService.getMemberHistory(memberId),
       branchService.getBranches(),
       shareService.getShareAccounts({ memberId }),
       loanService.getLoanAccounts({ memberId }),
+      depositService.getDepositAccounts({ memberId }),
     ]);
     if (memRes.success && memRes.data) setMember(memRes.data);
     if (histRes.success) setHistory(histRes.data);
     if (branchRes.success) setBranches(branchRes.data);
     if (shareRes.success) setShareAccounts(shareRes.data);
     if (loanRes.success) setLoanAccounts(loanRes.data);
+    if (depRes.success) setDepositAccounts(depRes.data);
   }, [memberId]);
 
   useEffect(() => {
     let isMounted = true;
     async function init() {
       setLoading(true);
-      const [memRes, histRes, branchRes, shareRes, loanRes] = await Promise.all([
+      const [memRes, histRes, branchRes, shareRes, loanRes, depRes] = await Promise.all([
         memberService.getMember(memberId),
         memberService.getMemberHistory(memberId),
         branchService.getBranches(),
         shareService.getShareAccounts({ memberId }),
         loanService.getLoanAccounts({ memberId }),
+        depositService.getDepositAccounts({ memberId }),
       ]);
       if (isMounted) {
         if (memRes.success && memRes.data) setMember(memRes.data);
@@ -68,6 +74,7 @@ export default function MemberProfilePage({
         if (branchRes.success) setBranches(branchRes.data);
         if (shareRes.success) setShareAccounts(shareRes.data);
         if (loanRes.success) setLoanAccounts(loanRes.data);
+        if (depRes.success) setDepositAccounts(depRes.data);
         setLoading(false);
       }
     }
@@ -229,6 +236,14 @@ export default function MemberProfilePage({
         </li>
         <li className="nav-item">
           <button
+            className={`nav-link ${activeTab === 'deposits' ? 'active' : ''}`}
+            onClick={() => setActiveTab('deposits')}
+          >
+            <i className="bi bi-piggy-bank me-1"></i> Deposits ({depositAccounts.length})
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
             className={`nav-link ${activeTab === 'loans' ? 'active' : ''}`}
             onClick={() => setActiveTab('loans')}
           >
@@ -322,7 +337,7 @@ export default function MemberProfilePage({
             </div>
           </div>
 
-          {/* Phase 2 Financial Accounts & Portfolio */}
+          {/* Integrated Real-time Financial Portfolio (Phase 1 + Phase 2 + Phase 3) */}
           <div className="card">
             <div className="card-header bg-light">Financial Accounts & Active Portfolio</div>
             <div className="card-body">
@@ -349,6 +364,27 @@ export default function MemberProfilePage({
                 </div>
 
                 <div className="col-12 col-md-4">
+                  <div className="card h-100 border-start border-4 border-info">
+                    <div className="card-body">
+                      <div className="d-flex align-items-center justify-content-between mb-2">
+                        <i className="bi bi-piggy-bank text-info fs-3"></i>
+                        <span className="badge bg-info-subtle text-info">{depositAccounts.length} Deposit(s)</span>
+                      </div>
+                      <h6 className="fw-bold mb-1">Deposit Accounts</h6>
+                      <div className="fs-5 fw-bold text-dark">
+                        ₹{depositAccounts.reduce((acc, d) => acc + (d.currentBalance || 0), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </div>
+                      <small className="text-muted d-block mt-1">
+                        Total Balance (FD + RD + Pigmy)
+                      </small>
+                      <button className="btn btn-link btn-sm p-0 text-decoration-none mt-2" onClick={() => setActiveTab('deposits')}>
+                        View Deposits <i className="bi bi-arrow-right"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-12 col-md-4">
                   <div className="card h-100 border-start border-4 border-success">
                     <div className="card-body">
                       <div className="d-flex align-items-center justify-content-between mb-2">
@@ -364,14 +400,6 @@ export default function MemberProfilePage({
                         View Active Loans <i className="bi bi-arrow-right"></i>
                       </button>
                     </div>
-                  </div>
-                </div>
-
-                <div className="col-12 col-md-4">
-                  <div className="future-placeholder h-100">
-                    <i className="bi bi-piggy-bank d-block text-muted fs-3"></i>
-                    <h6 className="fw-bold mb-1 text-muted">Deposits (FD / RD / Savings)</h6>
-                    <small className="text-muted">Phase 3 Feature</small>
                   </div>
                 </div>
               </div>
@@ -424,6 +452,56 @@ export default function MemberProfilePage({
                             View Certificate
                           </Link>
                         </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* DEPOSITS TAB */}
+      {activeTab === 'deposits' && (
+        <div className="card">
+          <div className="card-header bg-light d-flex align-items-center justify-content-between py-3">
+            <h6 className="card-title mb-0 fw-bold text-dark">
+              <i className="bi bi-piggy-bank me-2 text-info"></i> Member Deposit Accounts (FD / RD / Daily)
+            </h6>
+            <Link href="/deposits" className="btn btn-sm btn-outline-primary">
+              <i className="bi bi-plus-circle me-1"></i> Open Deposit
+            </Link>
+          </div>
+          <div className="card-body p-0">
+            {depositAccounts.length === 0 ? (
+              <EmptyState icon="bi-piggy-bank" title="No Deposit Accounts" message="This member has not opened any Fixed Deposit or Recurring Deposit accounts." />
+            ) : (
+              <div className="table-responsive">
+                <table className="table table-hover align-middle mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Account No</th>
+                      <th>Product</th>
+                      <th>Type</th>
+                      <th className="text-end">Principal / Installment</th>
+                      <th className="text-center">Tenure / Rate</th>
+                      <th className="text-end">Maturity Amount</th>
+                      <th className="text-end">Current Balance</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {depositAccounts.map((d) => (
+                      <tr key={d.id}>
+                        <td><code>{d.accountNumber}</code></td>
+                        <td className="fw-semibold">{d.productName}</td>
+                        <td><span className="badge bg-light text-primary border">{d.depositType}</span></td>
+                        <td className="text-end fw-bold">₹{d.depositAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td className="text-center">{d.tenureMonths} Mos @ {d.interestRate}%</td>
+                        <td className="text-end text-success fw-bold">₹{d.maturityAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td className="text-end fw-bold">₹{d.currentBalance?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td><StatusBadge status={d.status} /></td>
                       </tr>
                     ))}
                   </tbody>

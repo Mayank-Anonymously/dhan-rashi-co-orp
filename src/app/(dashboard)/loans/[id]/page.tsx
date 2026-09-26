@@ -24,6 +24,13 @@ export default function LoanAccountDetailPage({ params }: PageParams) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'schedule' | 'ledger' | 'overview' | 'history'>('schedule');
 
+  // Repayment Modal
+  const [showRepayModal, setShowRepayModal] = useState(false);
+  const [repayAmount, setRepayAmount] = useState<number>(0);
+  const [repayPaymentMode, setRepayPaymentMode] = useState<string>('Cash');
+  const [repayRemarks, setRepayRemarks] = useState<string>('EMI Repayment');
+  const [savingRepay, setSavingRepay] = useState(false);
+
   useEffect(() => {
     loadDetails();
   }, [id]);
@@ -36,9 +43,35 @@ export default function LoanAccountDetailPage({ params }: PageParams) {
       setSchedule(res.data.schedule || []);
       setLedger(res.data.ledger || []);
       setHistory(res.data.history || []);
+      setRepayAmount(res.data.loan.emiAmount || 0);
     }
     setLoading(false);
   }
+
+  const handleOpenRepayModal = () => {
+    if (loan) setRepayAmount(loan.emiAmount || 1000);
+    setShowRepayModal(true);
+  };
+
+  const handleSaveRepayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loan) return;
+
+    setSavingRepay(true);
+    const res = await loanService.repayLoanInstallment(loan.id, {
+      amount: Number(repayAmount),
+      paymentMode: repayPaymentMode,
+      remarks: repayRemarks,
+    });
+    setSavingRepay(false);
+
+    if (res.success) {
+      setShowRepayModal(false);
+      loadDetails();
+    } else {
+      alert(res.message || 'Failed to record loan repayment.');
+    }
+  };
 
   if (loading) {
     return <LoadingState message="Loading loan account details..." />;
@@ -70,6 +103,11 @@ export default function LoanAccountDetailPage({ params }: PageParams) {
         <Link href="/loans" className="btn btn-outline-secondary btn-sm me-2">
           <i className="bi bi-arrow-left me-1"></i> Back
         </Link>
+        {loan.status === 'ACTIVE' && (
+          <button className="btn btn-success btn-sm me-2" onClick={handleOpenRepayModal}>
+            <i className="bi bi-wallet2 me-1"></i> Record Repayment
+          </button>
+        )}
         <StatusBadge status={loan.status} />
       </PageHeader>
 
@@ -356,6 +394,96 @@ export default function LoanAccountDetailPage({ params }: PageParams) {
             )}
           </div>
         </div>
+      )}
+
+      {/* Record Repayment Modal */}
+      {showRepayModal && (
+        <>
+          <div className="modal-backdrop fade show" style={{ zIndex: 1050 }}></div>
+          <div className="modal fade show d-block" tabIndex={-1} style={{ zIndex: 1055 }}>
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <form onSubmit={handleSaveRepayment}>
+                  <div className="modal-header">
+                    <h5 className="modal-title">Record Loan EMI Repayment</h5>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={() => setShowRepayModal(false)}
+                      disabled={savingRepay}
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    <div className="mb-3 p-3 bg-light rounded border">
+                      <div className="fw-semibold">{loan.loanNumber} — {loan.productName}</div>
+                      <div className="small text-muted">{loan.memberName} ({loan.memberNumber})</div>
+                      <div className="d-flex justify-content-between mt-2">
+                        <span>Outstanding Principal:</span>
+                        <strong className="text-danger">₹{loan.outstandingPrincipal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span>Standard Monthly EMI:</span>
+                        <strong className="text-primary">₹{loan.emiAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                      </div>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label small fw-semibold">Repayment Amount (₹) *</label>
+                      <input
+                        type="number"
+                        className="form-control form-control-sm"
+                        value={repayAmount}
+                        onChange={(e) => setRepayAmount(Number(e.target.value))}
+                        min={1}
+                        required
+                      />
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label small fw-semibold">Payment Mode</label>
+                      <select
+                        className="form-select form-select-sm"
+                        value={repayPaymentMode}
+                        onChange={(e) => setRepayPaymentMode(e.target.value)}
+                      >
+                        <option value="Cash">Cash (COA 1000)</option>
+                        <option value="Bank">Bank Transfer (COA 1100)</option>
+                      </select>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label small fw-semibold">Remarks</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        value={repayRemarks}
+                        onChange={(e) => setRepayRemarks(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="p-2 bg-light rounded border small text-muted">
+                      <i className="bi bi-info-circle me-1 text-primary"></i>
+                      Submitting applies repayment towards next unpaid schedule installment, split into principal and interest income, updating society general ledger in real time.
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setShowRepayModal(false)}
+                      disabled={savingRepay}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn btn-success btn-sm" disabled={savingRepay}>
+                      {savingRepay ? 'Processing...' : 'Confirm Repayment'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

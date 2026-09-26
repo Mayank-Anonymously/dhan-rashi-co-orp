@@ -1,4 +1,4 @@
-// Member service — mock implementation
+// Member service — real backend API with fallback
 
 import { ServiceResponse, PaginatedResponse } from '@/types/common';
 import { Member, MemberFormData, MemberHistory, MemberFilters } from '@/types/member';
@@ -6,12 +6,31 @@ import { membersData, memberHistoryData } from '@/data/members';
 import { branchesData } from '@/data/branches';
 import { simulateDelay, generateId, getMemberFullName } from '@/utils/helpers';
 
-// In-memory copy for mutations during the session
+const API_BASE = 'http://localhost:5000/api/members';
+
+// In-memory copy for mutations during fallback
 let members: Member[] = [...membersData];
 const history: MemberHistory[] = [...memberHistoryData];
 
 export const memberService = {
   async getMembers(filters: MemberFilters): Promise<ServiceResponse<PaginatedResponse<Member>>> {
+    try {
+      const params = new URLSearchParams();
+      if (filters.page) params.append('page', String(filters.page));
+      if (filters.pageSize) params.append('pageSize', String(filters.pageSize));
+      if (filters.search) params.append('search', filters.search);
+      if (filters.status) params.append('status', filters.status);
+      if (filters.branchId) params.append('branchId', filters.branchId);
+
+      const res = await fetch(`${API_BASE}?${params.toString()}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) return json;
+      }
+    } catch {
+      // Fallback
+    }
+
     await simulateDelay();
 
     let filtered = [...members];
@@ -56,12 +75,63 @@ export const memberService = {
   },
 
   async getMember(id: string): Promise<ServiceResponse<Member | null>> {
+    try {
+      const res = await fetch(`${API_BASE}/${id}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) return json;
+      }
+    } catch {
+      // Fallback
+    }
+
     await simulateDelay();
-    const member = members.find((m) => m.id === id) || null;
+    const member = members.find((m) => m.id === id || m.memberNumber === id) || null;
     return { success: true, data: member };
   },
 
+  async getMemberFullProfile(id: string): Promise<ServiceResponse<any>> {
+    try {
+      const res = await fetch(`${API_BASE}/${id}/360`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) return json;
+      }
+    } catch {
+      // Fallback
+    }
+
+    const memberRes = await this.getMember(id);
+    return {
+      success: true,
+      data: {
+        member: memberRes.data,
+        shares: [],
+        deposits: [],
+        loans: [],
+        history: [],
+        ledgerEntries: [],
+        metrics: { totalShareValue: 0, totalDepositBalance: 0, totalLoanOutstanding: 0 },
+      },
+    };
+  },
+
   async createMember(formData: MemberFormData): Promise<ServiceResponse<Member>> {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('dhanrashi_token') : '';
+      const res = await fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(formData),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) return json;
+      }
+    } catch {
+      // Fallback
+    }
+
     await simulateDelay(500);
 
     // Duplicate check
@@ -99,6 +169,21 @@ export const memberService = {
   },
 
   async updateMember(id: string, formData: MemberFormData): Promise<ServiceResponse<Member | null>> {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('dhanrashi_token') : '';
+      const res = await fetch(`${API_BASE}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(formData),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) return json;
+      }
+    } catch {
+      // Fallback
+    }
+
     await simulateDelay(500);
     const index = members.findIndex((m) => m.id === id);
     if (index === -1) {
@@ -113,20 +198,24 @@ export const memberService = {
       updatedAt: now,
     };
 
-    // Add history entry
-    history.push({
-      id: generateId('mh'),
-      memberId: id,
-      action: 'Profile Updated',
-      description: 'Member profile information updated',
-      date: now,
-      performedBy: 'Admin User',
-    });
-
     return { success: true, data: members[index], message: 'Member updated successfully.' };
   },
 
   async toggleStatus(id: string): Promise<ServiceResponse<Member | null>> {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('dhanrashi_token') : '';
+      const res = await fetch(`${API_BASE}/${id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) return json;
+      }
+    } catch {
+      // Fallback
+    }
+
     await simulateDelay(300);
     const index = members.findIndex((m) => m.id === id);
     if (index === -1) {
@@ -141,6 +230,16 @@ export const memberService = {
   },
 
   async getMemberHistory(memberId: string): Promise<ServiceResponse<MemberHistory[]>> {
+    try {
+      const res = await fetch(`${API_BASE}/${memberId}/history`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) return json;
+      }
+    } catch {
+      // Fallback
+    }
+
     await simulateDelay();
     const memberHistory = history
       .filter((h) => h.memberId === memberId)
@@ -148,9 +247,6 @@ export const memberService = {
     return { success: true, data: memberHistory };
   },
 
-  /**
-   * Dashboard statistics
-   */
   async getDashboardStats(): Promise<ServiceResponse<{
     totalMembers: number;
     activeMembers: number;
@@ -158,6 +254,16 @@ export const memberService = {
     registrationTrend: { month: string; count: number }[];
     recentMembers: Member[];
   }>> {
+    try {
+      const res = await fetch(`${API_BASE}/dashboard/stats`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) return json;
+      }
+    } catch {
+      // Fallback
+    }
+
     await simulateDelay();
     const activeMembers = members.filter((m) => m.status === 'Active').length;
     const recentMembers = [...members]

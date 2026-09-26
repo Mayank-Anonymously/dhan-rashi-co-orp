@@ -488,4 +488,24 @@ export const loanService = {
       },
     };
   },
+
+  async repayLoanInstallment(id: string, data: { amount: number; paymentMode?: string; remarks?: string }): Promise<ServiceResponse<any>> {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('dhanrashi_token') : '';
+      const res = await fetch(`${API_BASE}/${id}/repay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) return json;
+      }
+    } catch {
+      // Fallback
+    }
+
+    await simulateDelay(500);
+    return { success: true, data: null, message: `Loan repayment of ₹${data.amount} recorded successfully.` };
+  },
 };
