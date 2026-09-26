@@ -346,7 +346,18 @@ export default function LoanAccountDetailPage({ params }: PageParams) {
                     </tr>
                     <tr>
                       <td className="text-muted">Interest Rate:</td>
-                      <td className="fw-bold text-primary">{loan.interestRate}% p.a.</td>
+                      <td className="fw-bold text-primary">
+                        {loan.monthlyInterestRate ? `${loan.monthlyInterestRate}% / month` : `${(loan.interestRate / 12).toFixed(2)}% / month`}
+                        <span className="text-muted fw-normal ms-1">({loan.interestRate}% p.a.)</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="text-muted">Late Fee Rate:</td>
+                      <td className="text-danger fw-semibold">{loan.lateFeeRate !== undefined ? loan.lateFeeRate : 0.25}% / month on overdue</td>
+                    </tr>
+                    <tr>
+                      <td className="text-muted">Fixed Penalty:</td>
+                      <td className="text-danger fw-semibold">₹{loan.fixedPenalty !== undefined ? loan.fixedPenalty : 100} / month overdue</td>
                     </tr>
                     <tr>
                       <td className="text-muted">Loan Period:</td>

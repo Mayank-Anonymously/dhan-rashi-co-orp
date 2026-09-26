@@ -21,7 +21,8 @@ export default function LoanRatesPage() {
     productId: '',
     minAmount: 10000,
     maxAmount: 100000,
-    interestRate: 12,
+    interestRate: 15.0,
+    monthlyRate: 1.25,
     effectiveFrom: new Date().toISOString().split('T')[0],
   });
 
@@ -50,16 +51,41 @@ export default function LoanRatesPage() {
       productId: products[0]?.id || '',
       minAmount: 10000,
       maxAmount: 100000,
-      interestRate: 12,
+      interestRate: 15.0,
+      monthlyRate: 1.25,
       effectiveFrom: new Date().toISOString().split('T')[0],
     });
     setShowModal(true);
   };
 
+  const handleAnnualChange = (annual: number) => {
+    const monthly = Number((annual / 12).toFixed(4));
+    setFormData((prev) => ({
+      ...prev,
+      interestRate: annual,
+      monthlyRate: monthly,
+    }));
+  };
+
+  const handleMonthlyChange = (monthly: number) => {
+    const annual = Number((monthly * 12).toFixed(2));
+    setFormData((prev) => ({
+      ...prev,
+      monthlyRate: monthly,
+      interestRate: annual,
+    }));
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    await loanService.createLoanRate(formData);
+    await loanService.createLoanRate({
+      productId: formData.productId,
+      minAmount: formData.minAmount,
+      maxAmount: formData.maxAmount,
+      interestRate: formData.interestRate,
+      effectiveFrom: formData.effectiveFrom,
+    });
     setSaving(false);
     setShowModal(false);
     loadData();
@@ -69,7 +95,7 @@ export default function LoanRatesPage() {
     <div>
       <PageHeader
         title="Interest Rate Slabs & Versioning"
-        description="Configure tiered interest rate slabs for loan products based on loan amount ranges and effective dates."
+        description="Configure tiered interest rate slabs for loan products (e.g. 1.25%/month = 15% p.a.)."
       >
         <button className="btn btn-primary btn-sm" onClick={handleOpenAddModal}>
           <i className="bi bi-plus-circle me-1"></i> Add Interest Rate Slab
@@ -79,7 +105,7 @@ export default function LoanRatesPage() {
       {/* Info Alert */}
       <div className="alert alert-info py-2 px-3 mb-4 small" role="alert">
         <i className="bi bi-shield-check me-2"></i>
-        <strong>Immutable Rate Versioning:</strong> Modifying or creating new interest rate slabs creates a new effective version without retroactively changing existing active loan accounts.
+        <strong>Standard Society Interest Rate:</strong> 1.25% per month (15.0% p.a.). Calculation formula: <code>Total Amount &times; 1.25 / 100</code>.
       </div>
 
       {/* Rates Table */}
@@ -101,7 +127,8 @@ export default function LoanRatesPage() {
                     <th>Product Code</th>
                     <th>Product Name</th>
                     <th>Slab Amount Range</th>
-                    <th>Applicable Interest Rate</th>
+                    <th>Monthly Interest</th>
+                    <th>Annual Interest Rate</th>
                     <th>Effective From</th>
                     <th>Effective To</th>
                     <th>Status</th>
@@ -116,7 +143,12 @@ export default function LoanRatesPage() {
                         ₹{r.minAmount.toLocaleString()} — ₹{r.maxAmount.toLocaleString()}
                       </td>
                       <td>
-                        <span className="badge bg-primary fs-6 fw-bold px-2 py-1">
+                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold px-2 py-1">
+                          {(r.interestRate / 12).toFixed(2)}% / mo
+                        </span>
+                      </td>
+                      <td>
+                        <span className="fw-bold text-dark">
                           {r.interestRate}% p.a.
                         </span>
                       </td>
@@ -190,18 +222,30 @@ export default function LoanRatesPage() {
                       </div>
 
                       <div className="col-6">
-                        <label className="form-label small fw-semibold">Interest Rate (% p.a.) *</label>
+                        <label className="form-label small fw-semibold">Monthly Rate (% / mo) *</label>
                         <input
                           type="number"
-                          step="0.1"
-                          className="form-control form-control-sm"
-                          value={formData.interestRate}
-                          onChange={(e) => setFormData({ ...formData, interestRate: Number(e.target.value) })}
+                          step="0.01"
+                          className="form-control form-control-sm text-primary fw-bold"
+                          value={formData.monthlyRate}
+                          onChange={(e) => handleMonthlyChange(Number(e.target.value))}
                           required
                         />
                       </div>
 
                       <div className="col-6">
+                        <label className="form-label small fw-semibold">Annual Rate (% p.a.) *</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          className="form-control form-control-sm"
+                          value={formData.interestRate}
+                          onChange={(e) => handleAnnualChange(Number(e.target.value))}
+                          required
+                        />
+                      </div>
+
+                      <div className="col-12">
                         <label className="form-label small fw-semibold">Effective From Date *</label>
                         <input
                           type="date"

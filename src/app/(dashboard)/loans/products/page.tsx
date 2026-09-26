@@ -25,8 +25,12 @@ export default function LoanProductsPage() {
     loanType: 'Personal Loan',
     minAmount: 10000,
     maxAmount: 500000,
-    interestRateType: 'REDUCING_BALANCE' as InterestType,
-    baseInterestRate: 12,
+    interestRateType: 'FLAT' as InterestType,
+    baseInterestRate: 15.0, // 15% p.a.
+    monthlyInterestRate: 1.25, // 1.25% / mo
+    lateFeeRate: 0.25, // 0.25%
+    fixedPenalty: 100, // ₹100
+    gracePeriodDays: 0,
     minPeriod: 6,
     maxPeriod: 60,
     processingCharge: 1,
@@ -56,14 +60,36 @@ export default function LoanProductsPage() {
       loanType: 'Personal Loan',
       minAmount: 10000,
       maxAmount: 500000,
-      interestRateType: 'REDUCING_BALANCE',
-      baseInterestRate: 12,
+      interestRateType: 'FLAT',
+      baseInterestRate: 15.0,
+      monthlyInterestRate: 1.25,
+      lateFeeRate: 0.25,
+      fixedPenalty: 100,
+      gracePeriodDays: 0,
       minPeriod: 6,
       maxPeriod: 60,
       processingCharge: 1,
       description: '',
     });
     setShowModal(true);
+  };
+
+  const handleAnnualRateChange = (annual: number) => {
+    const monthly = Number((annual / 12).toFixed(4));
+    setFormData((prev) => ({
+      ...prev,
+      baseInterestRate: annual,
+      monthlyInterestRate: monthly,
+    }));
+  };
+
+  const handleMonthlyRateChange = (monthly: number) => {
+    const annual = Number((monthly * 12).toFixed(2));
+    setFormData((prev) => ({
+      ...prev,
+      monthlyInterestRate: monthly,
+      baseInterestRate: annual,
+    }));
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -96,12 +122,22 @@ export default function LoanProductsPage() {
     <div>
       <PageHeader
         title="Loan Products Configuration"
-        description="Configure society loan product rules, limits, interest calculation methods, and charges."
+        description="Configure society loan products, interest rate formulas (1.25%/mo), late fees (0.25%), and penalties (₹100/mo)."
       >
         <button className="btn btn-primary btn-sm" onClick={handleOpenAddModal}>
           <i className="bi bi-plus-lg me-1"></i> Add Loan Product
         </button>
       </PageHeader>
+
+      {/* Society Standard Policy Banner */}
+      <div className="alert alert-primary py-2 px-3 mb-4 small d-flex align-items-center justify-content-between" role="alert">
+        <div className="d-flex align-items-center">
+          <i className="bi bi-info-circle-fill me-2 fs-6"></i>
+          <div>
+            <strong>Standard Society Loan Terms:</strong> 1.25% Flat Interest / Month (15% p.a. &bull; <code>Amount &times; 1.25 / 100</code>) &bull; 0.25% Overdue Late Fee &bull; ₹100/Month Fixed Penalty
+          </div>
+        </div>
+      </div>
 
       {/* Filter Toolbar */}
       <div className="card mb-4">
@@ -156,8 +192,9 @@ export default function LoanProductsPage() {
                     <th>Code</th>
                     <th>Product Name</th>
                     <th>Amount Range</th>
-                    <th>Interest Method</th>
-                    <th>Base Rate</th>
+                    <th>Method</th>
+                    <th>Interest Rate</th>
+                    <th>Late Fee & Penalty</th>
                     <th>Tenure Range</th>
                     <th>Processing Fee</th>
                     <th>Status</th>
@@ -180,7 +217,22 @@ export default function LoanProductsPage() {
                           {p.interestRateType === 'REDUCING_BALANCE' ? 'Reducing Balance' : 'Flat Rate'}
                         </span>
                       </td>
-                      <td className="fw-bold text-primary">{p.baseInterestRate}% p.a.</td>
+                      <td>
+                        <div className="fw-bold text-primary">
+                          {p.monthlyInterestRate ? `${p.monthlyInterestRate}% / mo` : `${(p.baseInterestRate / 12).toFixed(2)}% / mo`}
+                        </div>
+                        <small className="text-muted">({p.baseInterestRate}% p.a.)</small>
+                      </td>
+                      <td>
+                        <div>
+                          <span className="badge bg-danger-subtle text-danger me-1">
+                            +{p.lateFeeRate !== undefined ? p.lateFeeRate : 0.25}% Late Fee
+                          </span>
+                        </div>
+                        <small className="text-muted">
+                          ₹{p.fixedPenalty !== undefined ? p.fixedPenalty : 100}/mo penalty
+                        </small>
+                      </td>
                       <td>{p.minPeriod} — {p.maxPeriod} mos</td>
                       <td>{p.processingCharge}%</td>
                       <td><StatusBadge status={p.status} /></td>
@@ -238,7 +290,7 @@ export default function LoanProductsPage() {
                         <input
                           type="text"
                           className="form-control form-control-sm"
-                          placeholder="e.g. Consumer Vehicle Loan"
+                          placeholder="e.g. Standard Member Personal Loan"
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           required
@@ -273,21 +325,60 @@ export default function LoanProductsPage() {
                           value={formData.interestRateType}
                           onChange={(e) => setFormData({ ...formData, interestRateType: e.target.value as InterestType })}
                         >
-                          <option value="REDUCING_BALANCE">Reducing Balance (EMI)</option>
-                          <option value="FLAT">Flat Rate</option>
+                          <option value="FLAT">Flat Monthly Rate (P &times; 1.25%)</option>
+                          <option value="REDUCING_BALANCE">Reducing Balance (Standard EMI)</option>
                         </select>
                       </div>
 
-                      <div className="col-6">
-                        <label className="form-label small fw-semibold">Base Interest Rate (% p.a.) *</label>
+                      <div className="col-3">
+                        <label className="form-label small fw-semibold">Monthly Rate (% / mo) *</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="form-control form-control-sm text-primary fw-bold"
+                          value={formData.monthlyInterestRate}
+                          onChange={(e) => handleMonthlyRateChange(Number(e.target.value))}
+                          required
+                        />
+                      </div>
+
+                      <div className="col-3">
+                        <label className="form-label small fw-semibold">Annual Rate (% p.a.) *</label>
                         <input
                           type="number"
                           step="0.1"
                           className="form-control form-control-sm"
                           value={formData.baseInterestRate}
-                          onChange={(e) => setFormData({ ...formData, baseInterestRate: Number(e.target.value) })}
+                          onChange={(e) => handleAnnualRateChange(Number(e.target.value))}
                           required
                         />
+                      </div>
+
+                      {/* Late fee and penalty fields */}
+                      <div className="col-6">
+                        <label className="form-label small fw-semibold text-danger">Overdue Late Fee (% / month)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="form-control form-control-sm border-danger-subtle"
+                          value={formData.lateFeeRate}
+                          onChange={(e) => setFormData({ ...formData, lateFeeRate: Number(e.target.value) })}
+                          placeholder="e.g. 0.25"
+                        />
+                        <div className="form-text small text-muted">Applied as percentage on overdue installment.</div>
+                      </div>
+
+                      <div className="col-6">
+                        <label className="form-label small fw-semibold text-danger">Fixed Penalty (₹ / month)</label>
+                        <input
+                          type="number"
+                          step="1"
+                          className="form-control form-control-sm border-danger-subtle"
+                          value={formData.fixedPenalty}
+                          onChange={(e) => setFormData({ ...formData, fixedPenalty: Number(e.target.value) })}
+                          placeholder="e.g. 100"
+                        />
+                        <div className="form-text small text-muted">Fixed monthly penalty levied per overdue cycle.</div>
                       </div>
 
                       <div className="col-4">

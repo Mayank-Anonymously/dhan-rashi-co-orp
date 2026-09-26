@@ -12,7 +12,11 @@ export interface LoanProduct {
   minAmount: number;
   maxAmount: number;
   interestRateType: InterestType;
-  baseInterestRate: number;
+  baseInterestRate: number; // Annual %
+  monthlyInterestRate?: number; // Monthly % (e.g. 1.25%)
+  lateFeeRate?: number; // Late fee % per month (e.g. 0.25%)
+  fixedPenalty?: number; // Fixed penalty per month (e.g. ₹100)
+  gracePeriodDays?: number;
   minPeriod: number;
   maxPeriod: number;
   repaymentFrequency: string;
@@ -30,7 +34,8 @@ export interface LoanRate {
   productName: string;
   minAmount: number;
   maxAmount: number;
-  interestRate: number;
+  interestRate: number; // Annual %
+  monthlyInterestRate?: number; // Monthly %
   effectiveFrom: string;
   effectiveTo?: string;
   status: 'Active' | 'Inactive';
@@ -70,11 +75,17 @@ export interface LoanScheduleItem {
   dueDate: string;
   principalDue: number;
   interestDue: number;
+  lateFeeDue?: number;
+  penaltyDue?: number;
   totalInstallment: number;
   principalPaid: number;
   interestPaid: number;
+  lateFeePaid?: number;
+  penaltyPaid?: number;
+  paidAmount?: number;
+  paymentDate?: string;
   outstandingPrincipal: number;
-  status: 'PENDING' | 'PAID' | 'OVERDUE';
+  status: 'PENDING' | 'UNPAID' | 'PARTIAL' | 'PAID' | 'OVERDUE';
 }
 
 export interface LoanLedgerEntry {
@@ -100,6 +111,9 @@ export interface LoanAccount {
   productName: string;
   principalAmount: number;
   interestRate: number;
+  monthlyInterestRate?: number;
+  lateFeeRate?: number;
+  fixedPenalty?: number;
   interestType: InterestType;
   loanPeriod: number;
   installmentFrequency: string;
@@ -111,4 +125,6 @@ export interface LoanAccount {
   totalRepayment: number;
   emiAmount: number;
   outstandingPrincipal: number;
+  totalPenaltyPaid?: number;
+  totalLateFeePaid?: number;
 }
